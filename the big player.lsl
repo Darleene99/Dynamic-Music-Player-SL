@@ -46,9 +46,71 @@ vector displayColourNormal = <1.0, 1.0, 1.0>;
 vector displayColourLoading = <0.8, 1.0, 0.8>;
 vector displayColourError = <1.0, 0.2, 0.2>;
 integer priorityTag;
+
+integer isDealingWithFuckingHeader = 0;
+
 // ================
 // Global functions
 // ================
+
+///
+/// BEGIN - added by Darleene
+///
+integer isFuckingHeader(integer lineNb, string data) {
+
+    
+    if (lineNb == 0) 
+    {
+        if (isFloat(data) == TRUE) 
+        {
+            // if the 1st line is float, we are fine
+            isDealingWithFuckingHeader = FALSE;
+            return FALSE;
+        } else {
+            // else, we are dealing with the fucking header
+            isDealingWithFuckingHeader = TRUE;
+            return TRUE;
+        }
+    }
+
+    // if we meet the 1st uuid in a fucking header, we have to skip it
+    if (isDealingWithFuckingHeader == TRUE && isUUID(data) == TRUE) {
+        isDealingWithFuckingHeader = FALSE;
+        return TRUE;
+    }
+
+    // by default, its fucking header is the source of the problem... 
+    // header should have started with comment chars, like // or # 
+    return FALSE;
+}
+
+
+// Dirty validate a string containing a float value
+// Does not handle scientific notation, or hex floats (!!)
+// After all, this is designed for 95% of likely human entered data
+integer  isFloat(string sin)
+{
+    sin = llToLower(sin);
+    // Avoid run time fail (for lslEditor at least) if string looks remotely like scientific notation 
+    if (llSubStringIndex(sin, "e") != -1)   	return FALSE; 	
+    list temp = llParseStringKeepNulls(sin, ["."], [] );
+    string subs = llList2String(temp, 0);
+    if ( (string) ( (integer) subs) != subs)    return FALSE;
+    if ( (temp != []) > 2)                      return FALSE;
+    if ( (temp != [])== 2)
+    {
+	subs = llList2String(temp, 1);    // extract the decimal part
+        // must have no sign after DP, so handle first decimal discretely
+	string first = llGetSubString(subs, 0, 0);
+	if ( (string) ( (integer) first) != first)     return FALSE;  
+	if ( (string) ( (integer) subs)  != subs)      return FALSE;
+    }
+    return TRUE;
+}
+
+///
+/// END - added by Darleene
+///
 
 // Create a progress bar from percentage
 string ProgressBar(float percent, integer length)
@@ -411,6 +473,14 @@ default
         {
             if (data != EOF)
             {
+
+                /// BEGIN - added by Darleene
+                if (isFuckingHeader((lineNumber - 1), data)) {
+                    DataRequest = llGetNotecardLine(Name, lineNumber++);
+                    return;
+                }
+                /// END - added by Darleene
+
                 list loadingList = [ "target", "DISPLAY", "action", "display", "type", "loading", "current", lineNumber, "end", numNotecardLines, "title", Name ];
                 llMessageLinked(LINK_THIS, 0, llList2Json(JSON_OBJECT, loadingList), NULL_KEY);
             
@@ -419,6 +489,7 @@ default
                 else
                 {
                     data = llStringTrim( data, STRING_TRIM );
+
                     list dataParts = llParseString2List(data, ["|"], [""]);
                     if (isUUID(llList2String(dataParts, 0)))
                     {
@@ -439,6 +510,11 @@ default
         llOwnerSay("freeMem = " + (string)freeMem);
 
         Debug("touch_start");
+/// BEGIN -- added by Darleene
+        // this fix tiny bug: not everything load properly when someoneone push a lot of notecards too quickly in the object...
+        ReadSongListNotecards();
+/// END -- added by darleene
+
         curSongs();
         StartAnimation(animName);
 
