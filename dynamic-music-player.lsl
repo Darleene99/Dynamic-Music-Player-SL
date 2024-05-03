@@ -1,5 +1,30 @@
+/**
+MIT License
 
+Copyright (c) [year] [fullname]
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
+// Turn on or off debug message
 integer DEBUG = FALSE;
+
 string animName = "lute animation";
 float INTERVAL = 3 ;
 
@@ -8,7 +33,7 @@ float V = 6.0;
 integer pota = 0;
 integer CHAN = -81412;
 integer ASSET = 9;
-// the pagination is assets
+
 integer listener;
 // integer trackCnt = 0;
 // integer LINK_NUMBER = 0;
@@ -47,9 +72,71 @@ vector displayColourNormal = <1.0, 1.0, 1.0>;
 vector displayColourLoading = <0.8, 1.0, 0.8>;
 vector displayColourError = <1.0, 0.2, 0.2>;
 integer priorityTag;
+
+integer isDealingWithFuckingHeader = 0;
+
 // ================
 // Global functions
 // ================
+
+///
+/// BEGIN - added by Darleene
+///
+integer isFuckingHeader(integer lineNb, string data) {
+
+    
+    if (lineNb == 0) 
+    {
+        if (isFloat(data) == TRUE) 
+        {
+            // if the 1st line is float, we are fine
+            isDealingWithFuckingHeader = FALSE;
+            return FALSE;
+        } else {
+            // else, we are dealing with the fucking header
+            isDealingWithFuckingHeader = TRUE;
+            return TRUE;
+        }
+    }
+
+    // if we meet the 1st uuid in a fucking header, we have to skip it
+    if (isDealingWithFuckingHeader == TRUE && isUUID(data) == TRUE) {
+        isDealingWithFuckingHeader = FALSE;
+        return TRUE;
+    }
+
+    // by default, its fucking header is the source of the problem... 
+    // header should have started with comment chars, like // or # 
+    return FALSE;
+}
+
+
+// Dirty validate a string containing a float value
+// Does not handle scientific notation, or hex floats (!!)
+// After all, this is designed for 95% of likely human entered data
+integer  isFloat(string sin)
+{
+    sin = llToLower(sin);
+    // Avoid run time fail (for lslEditor at least) if string looks remotely like scientific notation 
+    if (llSubStringIndex(sin, "e") != -1)       return FALSE;     
+    list temp = llParseStringKeepNulls(sin, ["."], [] );
+    string subs = llList2String(temp, 0);
+    if ( (string) ( (integer) subs) != subs)    return FALSE;
+    if ( (temp != []) > 2)                      return FALSE;
+    if ( (temp != [])== 2)
+    {
+    subs = llList2String(temp, 1);    // extract the decimal part
+        // must have no sign after DP, so handle first decimal discretely
+    string first = llGetSubString(subs, 0, 0);
+    if ( (string) ( (integer) first) != first)     return FALSE;  
+    if ( (string) ( (integer) subs)  != subs)      return FALSE;
+    }
+    return TRUE;
+}
+
+///
+/// END - added by Darleene
+///
 
 // Create a progress bar from percentage
 string ProgressBar(float percent, integer length)
@@ -307,7 +394,6 @@ StopSong()
 
     llStopSound();
     llSetTimerEvent(0.0);
-    StopAnimation(animName);
 
     playing = "";
 
@@ -369,7 +455,7 @@ default
     state_entry()
     {
         llSetSoundQueueing(TRUE);
-        llRequestPermissions(llGetOwner(),PERMISSION_TRIGGER_ANIMATION);
+  //      llRequestPermissions(llGetOwner(),PERMISSION_TRIGGER_ANIMATION);
 
         Initialize();
         StartComms();
@@ -378,7 +464,10 @@ default
     changed(integer change)
     {
         Debug("changed");
-
+        if (change & CHANGED_INVENTORY)
+        {
+            llResetScript();
+        }
         if (change & CHANGED_OWNER)
             llResetScript();
         else
@@ -394,6 +483,7 @@ default
     {
         llResetScript();
     }
+
 
     dataserver( key id, string data )
     {
@@ -412,6 +502,14 @@ default
         {
             if (data != EOF)
             {
+
+                /// BEGIN - added by Darleene
+                if (isFuckingHeader((lineNumber - 1), data)) {
+                    DataRequest = llGetNotecardLine(Name, lineNumber++);
+                    return;
+                }
+                /// END - added by Darleene
+
                 list loadingList = [ "target", "DISPLAY", "action", "display", "type", "loading", "current", lineNumber, "end", numNotecardLines, "title", Name ];
                 llMessageLinked(LINK_THIS, 0, llList2Json(JSON_OBJECT, loadingList), NULL_KEY);
             
@@ -420,6 +518,7 @@ default
                 else
                 {
                     data = llStringTrim( data, STRING_TRIM );
+
                     list dataParts = llParseString2List(data, ["|"], [""]);
                     if (isUUID(llList2String(dataParts, 0)))
                     {
@@ -438,11 +537,7 @@ default
     {
         integer freeMem = llGetFreeMemory();
         llOwnerSay("freeMem = " + (string)freeMem);
-
-        Debug("touch_start");
         curSongs();
-        StartAnimation(animName);
-
         ShowDialog(llDetectedKey(0));
     }
 

@@ -1,0 +1,24 @@
+        ,               Wed Apr 24 2024 02:39:30 GMT+0200 (Central European Summer Time)
+        |        __  - Uploaded via BeanOS - https://marketplace.secondlife.com/stores/232338
+        | |      |--| - Song Requested by: a831b886-bb49-4528-9c1f-d134da0b1c29
+        |/       |  | 
+       /|_      () () 
+      //|              Notecard format:
+     | |_ |          - song name,
+      _|_/           - song texture,
+        |             - clip length,
+       @'             - list of clips.                             (finish comment section with 4 or more ='s	)
+=========================================================
+Stereophonics - A Thousand Trees (Official Video)
+592650a0-06cf-e00a-f3ab-28330fa85209
+18.1
+ec118185-6f5b-3565-2244-bca041f61053
+d887479c-3d51-bc1d-8e16-54014112eec1
+2da0ed2c-cfb0-1713-394b-153fd09b400b
+f5043503-b983-a24f-09c4-2c79b95524a4
+26e470d8-216a-5d4b-5900-00ad06200603
+2ac5316c-9af2-61fb-ea45-e270eee0d2b0
+d9896d3e-86f4-f99d-0546-5ddc94e6ca22
+9c5f9a89-13c0-f9ce-53f4-041766b953da
+10003b14-9286-a0ff-30a8-cf186e6c2f13
+7154bf36-bc85-8179-f854-37de0d5f745f
