@@ -394,6 +394,7 @@ StopSong()
 
     llStopSound();
     llSetTimerEvent(0.0);
+    StopAnimation(animName);
 
     playing = "";
 
@@ -537,7 +538,17 @@ default
     {
         integer freeMem = llGetFreeMemory();
         llOwnerSay("freeMem = " + (string)freeMem);
+
+        Debug("touch_start");
+/// BEGIN -- added by Darleene
+        // this fix tiny bug: not everything load properly when someoneone push a lot of notecards too quickly in the object...
+  //      ReadSongListNotecards();
+// THIS GENERATES A HEAP BUFFER OVERFLOW AFTER SEVERAL CALLS IN BUCLE FIXED 11/05/24 BY DIMI
+/// END -- added by darleene
+
         curSongs();
+        StartAnimation(animName);
+
         ShowDialog(llDetectedKey(0));
     }
 
