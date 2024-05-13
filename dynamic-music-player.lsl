@@ -1,7 +1,7 @@
 /**
 MIT License
 
-Copyright (c) [year] [fullname]
+Copyright (c) 2024 - Darleene99 and co...
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -25,18 +25,14 @@ SOFTWARE.
 // Turn on or off debug message
 integer DEBUG = FALSE;
 
-string animName = "lute animation";
 float INTERVAL = 3 ;
 
-//float INTERVAL =  llGetNotecardLine/( Name, pota );
 float V = 6.0;
-integer pota = 0;
+
 integer CHAN = -81412;
 integer ASSET = 9;
 
 integer listener;
-// integer trackCnt = 0;
-// integer LINK_NUMBER = 0;
 integer Curl = 0;
 integer SoundID = 0;
 integer songTrackCnt = 0;
@@ -73,35 +69,33 @@ vector displayColourLoading = <0.8, 1.0, 0.8>;
 vector displayColourError = <1.0, 0.2, 0.2>;
 integer priorityTag;
 
-integer isDealingWithFuckingHeader = 0;
+integer isProcessingHeader = 0;
 
 // ================
 // Global functions
 // ================
 
-///
-/// BEGIN - added by Darleene
-///
-integer isFuckingHeader(integer lineNb, string data) {
 
-    
+// Headers in notecards cause parsing issue when reading them
+integer isHeaderLine(integer lineNb, string data)
+{
     if (lineNb == 0) 
     {
         if (isFloat(data) == TRUE) 
         {
             // if the 1st line is float, we are fine
-            isDealingWithFuckingHeader = FALSE;
+            isProcessingHeader = FALSE;
             return FALSE;
         } else {
             // else, we are dealing with the fucking header
-            isDealingWithFuckingHeader = TRUE;
+            isProcessingHeader = TRUE;
             return TRUE;
         }
     }
 
     // if we meet the 1st uuid in a fucking header, we have to skip it
-    if (isDealingWithFuckingHeader == TRUE && isUUID(data) == TRUE) {
-        isDealingWithFuckingHeader = FALSE;
+    if (isProcessingHeader == TRUE && isUUID(data) == TRUE) {
+        isProcessingHeader = FALSE;
         return TRUE;
     }
 
@@ -134,9 +128,7 @@ integer  isFloat(string sin)
     return TRUE;
 }
 
-///
-/// END - added by Darleene
-///
+
 
 // Create a progress bar from percentage
 string ProgressBar(float percent, integer length)
@@ -363,7 +355,6 @@ doPrevSet()
 LoadSong()
 {
     Debug("LoadSong");
-
     Debug( "Loading: "+ Name);
 
     ncLineCountKey = llGetNumberOfNotecardLines(Name);
@@ -374,7 +365,6 @@ PlaySong()
     Debug("PlaySong with INTERVAL=" + (string)INTERVAL);
 
     playing = Name;
-
     Curl = 0;
 
     Debug("Playing: "+ Name);
@@ -455,8 +445,6 @@ default
     state_entry()
     {
         llSetSoundQueueing(TRUE);
-  //      llRequestPermissions(llGetOwner(),PERMISSION_TRIGGER_ANIMATION);
-
         Initialize();
         StartComms();
     }
@@ -468,6 +456,7 @@ default
         {
             llResetScript();
         }
+        
         if (change & CHANGED_OWNER)
             llResetScript();
         else
@@ -502,13 +491,11 @@ default
         {
             if (data != EOF)
             {
-
-                /// BEGIN - added by Darleene
-                if (isFuckingHeader((lineNumber - 1), data)) {
+                // Skip header or comment in notecard
+                if (isHeaderLine((lineNumber - 1), data)) {
                     DataRequest = llGetNotecardLine(Name, lineNumber++);
                     return;
                 }
-                /// END - added by Darleene
 
                 list loadingList = [ "target", "DISPLAY", "action", "display", "type", "loading", "current", lineNumber, "end", numNotecardLines, "title", Name ];
                 llMessageLinked(LINK_THIS, 0, llList2Json(JSON_OBJECT, loadingList), NULL_KEY);
