@@ -4,11 +4,11 @@
 This project is a script for a dynamic music player in Second Life. It allows you to play sound clips from a notecard with proper synchronization, regardless of the length of the song.
 
 
-## Usage
+## Installation
 
-1. Create a prims or import a mesh
+1. Create a prims (or import a mesh)
 2. Drop the "dynamic-music-player.lsl" script into your SL object
-3. Drop notecard sample you can find in the folder "notecard-sample"
+3. Drop notecard sample that you can find in the folder "notecard-sample"
 4. Click your object and enjoy the synchronized playback of your music clips!
 
 
@@ -68,7 +68,6 @@ There are a few additional features and improvements planned for the future:
 
 This project is licensed under the MIT License. You are free to use it to create and sell your own products, but the script itself cannot be resold without further strong modifications.
 
-![image](https://github.com/Dimitrovich702/Dynamic-Music-Player-SL/assets/151694954/964c5efb-9016-481e-a186-e82fd67be9b5)
 
 #
 One thousand people has learn how to upload music and create their own instruments.
