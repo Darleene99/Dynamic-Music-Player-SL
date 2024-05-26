@@ -251,13 +251,13 @@ ForceHoverText(string errorText)
 {
     list errorList = [ "target", "DISPLAY", "action", "display", "type", "error", "msg", errorText ];
     string json = llList2Json(JSON_OBJECT, errorList);
-    llMessageLinked(LINK_THIS, SCRIPT_ID, llList2Json(JSON_OBJECT, errorList), NULL_KEY);
+    llMessageLinked(LINK_THIS, 0, llList2Json(JSON_OBJECT, errorList), NULL_KEY);
 }
 
 SendPlayingList()
 {
     list playingList = [ "target", "DISPLAY", "action", "display", "type", "playing", "time", llGetTime(), "totalTime", totalTime, "title", currentSongName ];
-    llMessageLinked(LINK_THIS, SCRIPT_ID, llList2Json(JSON_OBJECT, playingList), NULL_KEY);
+    llMessageLinked(LINK_THIS, 0, llList2Json(JSON_OBJECT, playingList), NULL_KEY);
 }
 
 Initialize()
@@ -267,15 +267,13 @@ Initialize()
 
     playing = "";
     currentSampleID = 1;
-
+    Debug((string)llGetFreeMemory());
     llMessageLinked(LINK_THIS, 0, llGetScriptName(), "");
 }
 
 
 LoadSong()
 {
-    Debug("LoadSong");
-    Debug("Loading: "+ currentSongName);
     ncLineCountKey = llGetNumberOfNotecardLines(currentSongName);
 }
 
@@ -295,6 +293,7 @@ PlaySong()
     llPlaySound(llList2Key(Musicuuids, currentSampleID++), VOLUME);
     nextQueueTime = llGetTime() + MUSIC_SAMPLE_INTERVAL - 1.0;
     llSetTimerEvent(0.2);
+    Debug((string)llGetFreeMemory());
 }
 
 
@@ -307,13 +306,9 @@ StopSong()
 
     playing = "";
     Musicuuids = [];
+    currentSongName = "";
     ForceHoverText("");
-
-    if (currentSongName != "")
-    {
-        currentSongName = "";
-        llMessageLinked(LINK_THIS, SCRIPT_ID, "SongEnded", NULL_KEY);
-    }
+    llMessageLinked(LINK_THIS, SCRIPT_ID, "SongEnded", NULL_KEY);
 }
 
 integer isUUID(string s)
@@ -365,6 +360,7 @@ default
             MUSIC_SAMPLE_INTERVAL = 0;
             songTrackCnt = 0;
             lineNumber = 0;
+            Debug("dataserver - initial read: " + currentSongName);
             DataRequest = llGetNotecardLine(currentSongName, lineNumber++);
             ForceHoverText("");
         }
@@ -397,7 +393,10 @@ default
                 DataRequest = llGetNotecardLine( currentSongName, lineNumber++ );
             }
             else
+            {
                 PlaySong();
+                llMessageLinked(LINK_THIS, SCRIPT_ID, "StartPlaying", NULL_KEY);
+            }
         }
     }
 
@@ -431,36 +430,27 @@ default
 
     link_message(integer sender, integer scriptId, string msg, key id)
     {
+        Debug("link_message: " + msg);
+
         if(llJsonGetValue(msg, ["target"]) == "DISPLAY")
         {
             if(llJsonGetValue(msg, ["action"]) == "display") 
             {
                 RenderDisplay(msg); 
-                return;
             }
+            return;
         }
-
-        Debug("link_message: " + msg);
         
         if (llSubStringIndex(msg, "PlaySong") != -1)
         {
-            currentSongName = "";
-            llSleep(0.2);
             StopSong();
-
             currentSongName = llGetSubString(msg, 9, -1);
             LoadSong();
-            return;
         }
         else if (msg == "StopSong")
         {
-            currentSongName = "";
-            llSleep(0.2);
             StopSong();
-            return;
         }
-
-
 
     }
 }

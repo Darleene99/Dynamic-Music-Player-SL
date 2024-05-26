@@ -29,7 +29,7 @@ integer DEBUG = FALSE;
 integer SCRIPT_ID = 1;
 
 // main menu options
-list mainMenu = ["Access", "---", "Stop Song",
+list mainMenu = ["Access", "Stop Song", "Cancel",
                 "Pick Song", "Play Mode", "Loop Mode",
                 "Play", "Next Song", "Prev Song"];
 
@@ -42,6 +42,12 @@ list playModeMenu = ["SINGLE", "SEQUENTIAL", "RANDOM"];
 
 // player settings and music mode 
 integer isPlaying = FALSE;
+
+// is the player loading a song at the moment?
+integer isLoading = FALSE;
+
+// Is the menu and player ready to play song
+integer isReady = FALSE;
 
 // Play mode can be: SINGLE / SEQUENTIAL or RANDOM
 string playMode = "SEQUENTIAL";
@@ -79,15 +85,6 @@ list listNotecards = [];
 integer currentSongId = 0;
 string currentSongName = "";
 
-//
-// SONG LIST MENU VARIABLES
-//
-// Menu is composed of 2 parts:
-//  - The text that is display (upper to the button)
-//  - The button that the user can click
-//
-string chooseSongMenuDisplay = "";
-list chooseSongMenuButtons = [];
 
 // Maximum button per page menu
 integer MAX_BUTTON = 9;
@@ -221,12 +218,51 @@ doPrevSet()
 
 showDialogSongPicker()
 {
+    //
+    // SONG LIST MENU VARIABLES
+    //
+    // Menu is composed of 2 parts:
+    //  - The text that is display (upper to the button)
+    //  - The button that the user can click
+    //
+    list chooseSongMenuButtons = generateSongMenuButtons();
+    string chooseSongMenuDisplay = generateSongMenuDisplay();
+
     llDialog(ToucherID, chooseSongMenuDisplay, chooseSongMenuButtons, dialogChannel);
 }
 
 
-generateChooseSongMenu()
+// Generate text that is display (upper to the button)
+string generateSongMenuDisplay()
 {
+    string chooseSongMenuDisplay = "";
+    integer i;
+    chooseSongMenuDisplay = "\n \n";
+
+    // Generate song list to be displayed
+    for (i = curSongOffset; i <= curSongEnd; i++)
+    {
+        // add an asterix to the currently playing song
+        if (currentSongId == i)
+            chooseSongMenuDisplay += "*";
+        else
+            chooseSongMenuDisplay += " ";
+        chooseSongMenuDisplay += (string) (i + 1) + ") ";
+        chooseSongMenuDisplay += llList2String(listNotecards, i);
+        chooseSongMenuDisplay += "\n";
+    }
+
+    return chooseSongMenuDisplay;
+}
+
+
+
+//  Generate the buttons that the user can click
+list generateSongMenuButtons()
+{
+    list chooseSongMenuButtons = [];
+
+    // determine if the prev or next button should be displayed
     if(curSongOffset > 0)
         chooseSongMenuButtons = [PREV_MSG];
     else
@@ -238,8 +274,8 @@ generateChooseSongMenu()
         chooseSongMenuButtons += [STOP_MSG, " "];
 
     integer i;
-    chooseSongMenuDisplay = "\n \n";
 
+    // define current offset for the paginator
     if (curSongOffset >= totalSongs)
     {
         curSongOffset = 0;
@@ -249,19 +285,12 @@ generateChooseSongMenu()
     if (curSongEnd >= totalSongs)
         curSongEnd = totalSongs - 1;
 
+    // Generate the list of buttons to display
     for (i = curSongOffset; i <= curSongEnd; i++)
     {
-        // add an asterix to the currently playing song
-        if (currentSongId == i)
-            chooseSongMenuDisplay += "*";
-        else
-            chooseSongMenuDisplay += " ";
-        chooseSongMenuDisplay += (string) (i + 1) + ") ";
-        chooseSongMenuDisplay += llList2String(listNotecards, i);
-        chooseSongMenuDisplay += "\n";
-
         chooseSongMenuButtons += (string)(i + 1);
     }
+    return chooseSongMenuButtons;
 }
 
 
@@ -284,18 +313,25 @@ StopSong()
 
 PlaySong()
 {
-    integer tmpId = currentSongId;
-    StopSong();
-    //DebugMsg("listNotecards: "+ llDumpList2String(listNotecards, ";"));
+    // Avoid error when people click to fast next and prev
+    if (isLoading == TRUE)
+    {
+        llSay(0, "(PlaySong) Song is loading. Please wait...");
+        return;
+    }
 
-    // dirty workaround because script are slow to assign a value to a global variable...
-    llSleep(0.2);
-    isPlaying = TRUE;
-    currentSongId = tmpId;
     currentSongName = llList2String(listNotecards, currentSongId);
+    if (currentSongName == "")
+    {
+        llOwnerSay("Oh snap... current song name is empty for ID " + (string)currentSongId);
+    }
     //DebugMsg("PlaySong - currentSongName: " + (string)currentSongName);
     //DebugMsg("PlaySong - currentSongId: " + (string)currentSongId);
     llMessageLinked(LINK_THIS, SCRIPT_ID, "PlaySong " + currentSongName, ToucherID);
+
+    isLoading = TRUE;
+    isPlaying = TRUE;
+
 }
 
 
@@ -340,10 +376,33 @@ ReadSongListNotecards()
     {
         listNotecards += [ llGetInventoryName(INVENTORY_NOTECARD, i) ];
     }
+    isReady = TRUE;
 }
 
 
 
+Initialize()
+{
+    DebugMsg("Initialize");
+    OwnerID = llGetOwner();
+    currentSongId = 0;
+    curSongEnd = 8;
+    curSongOffset = 0;
+    isPlaying = FALSE;
+    isLoading = FALSE;
+    isReady = FALSE;
+
+    // make it harder to find the channel for the dialog menu
+    integer rdm = RandomInteger(100000, 500000);
+
+    // set a dialog channel
+    dialogChannel = -1 - (integer)("0x" + llGetSubString( (string)llGetKey(), -7, -1) ) + rdm;     
+
+    llOwnerSay((string)llGetFreeMemory());
+    llMessageLinked(LINK_THIS, 0, llGetScriptName(), "");
+
+    ReadSongListNotecards();
+}
 
 
 
@@ -354,19 +413,12 @@ default
 {
     state_entry()
     {
-        OwnerID = llGetOwner();
-        
-        currentSongId = 0;
-        curSongEnd = 8;
-        curSongOffset = 0;
+        Initialize(); 
+    }
 
-        ReadSongListNotecards();
-
-        // make it harder to find the channel for the dialog menu
-        integer rdm = RandomInteger(100000, 500000);
-
-        // set a dialog channel
-        dialogChannel = -1 - (integer)("0x" + llGetSubString( (string)llGetKey(), -7, -1) ) + rdm;
+    on_rez(integer start_param)
+    {
+        Initialize(); 
     }
 
     touch_start(integer num_detected)
@@ -379,7 +431,21 @@ default
             llSay(0, "Access denied");
             return;
         }
-            
+
+        // Avoid error when people click to fast next and prev
+        if (isReady == FALSE)
+        {
+            llSay(0, "Player is initializing. Please wait...");
+            return;
+        }
+
+        // Avoid error when people click to fast next and prev
+        if (isLoading == TRUE)
+        {
+            llSay(0, "(Touch) Song is loading. Please wait...");
+            return;
+        }
+
         // create listen handler
         listenHandler = llListen(dialogChannel, "", ToucherID, "");
 
@@ -413,7 +479,7 @@ default
     listen(integer channel, string name, key id, string message)
     {
         // Used to remove unecessary listner
-        integer removeListner = 1;
+        integer extendTimer = 0;
         key avatarId = llDetectedKey(0);
 
         DebugMsg("listen = " + message);
@@ -421,7 +487,11 @@ default
         //
         // Level 1 - Main Menu
         //
-        if (message == "Play")
+        if (message == "Cancel")
+        {
+            return;
+        }
+        else if (message == "Play")
         {
             PlaySong();
         }
@@ -435,20 +505,18 @@ default
         }
         else if (message == "Pick Song")
         {
-            removeListner = 0;
-            ReadSongListNotecards();
-            generateChooseSongMenu();
+            extendTimer = 1;
             showDialogSongPicker();
         }
         else if (message == "Play Mode")
         {
-            removeListner = 0;
+            extendTimer = 1;
             string playModeMenuHeader = GetPlayModeMenuHeader();
             llDialog(ToucherID, playModeMenuHeader, playModeMenu, dialogChannel);
         }
         else if (message == "Loop Mode")
         {
-            removeListner = 0;
+            extendTimer = 1;
             string loopMenuHeader = GetLoopMenuHeader();
             llDialog(ToucherID, loopMenuHeader, loopMenu, dialogChannel);
         }
@@ -458,7 +526,7 @@ default
         }
         else if (message == "Access")
         {
-            removeListner = 0;
+            extendTimer = 1;
             string accessMenuHeader = GetAccessMenuHeader();
             llDialog(ToucherID, accessMenuHeader, accessMenu, dialogChannel);
         }
@@ -505,16 +573,14 @@ default
         //
         if (message == "Next >>")
         {
-            removeListner = 0;
+            extendTimer = 1;
             doNextSet();
-            generateChooseSongMenu();
             showDialogSongPicker();
         }
         else if (message == "<< Prev")
         {
-            removeListner = 0;
+            extendTimer = 1;
             doPrevSet();
-            generateChooseSongMenu();
             showDialogSongPicker();
         }
         else if (message == "Stop")
@@ -528,13 +594,10 @@ default
             PlaySong();
         }
 
-        
-        // Check if we have to remove unecessary listner
-        if (listenHandler != 0 && removeListner == 1) 
+        if (extendTimer == 1) 
         {
-            DebugMsg("llListenRemove - listenHandler: " + (string)listenHandler);
-            llListenRemove(listenHandler);
-            listenHandler = 0;
+            // add more time before closing the listener
+            llSetTimerEvent(menuTimeout);
         }
     }
     
@@ -556,28 +619,30 @@ default
 
     link_message(integer sender, integer scriptId, string msg, key id)
     {
-        // if someone requested to stop the music. no more suffle or random
-        if (isPlaying != TRUE)
+        // player sent message to inform the song was loaded and has started to play
+        if (msg == "StartPlaying" || msg == "SongEnded")
         {
+            isLoading = FALSE;
             return;
         }
 
         // Manage sequential and random mode
-        if (msg == "SongEnded" && playMode != "SINGLE")
+        if (msg == "SongEnded")
         {
-            if (playMode == "SEQUENTIAL")
+            isPlaying = FALSE;
+            if (playMode != "SINGLE")
             {
-                PlayNext();
-                return;
-            }
-
-            // Random mode (note sure it will work... need to test the max value)
-            if (playMode == "RANDOM")
-            {
-                currentSongId = RandomInteger(0, totalSongs);
-                llSleep(0.2); // slow down baby
-                PlaySong();
-                return;
+                if (playMode == "SEQUENTIAL")
+                {
+                    PlayNext();
+                }
+                else if (playMode == "RANDOM")
+                {
+                    // Random mode (note sure it will work... need to test the max value)
+                    currentSongId = RandomInteger(0, totalSongs);
+                    llSleep(0.2); // slow down baby
+                    PlaySong();
+                }
             }
         }
     }
