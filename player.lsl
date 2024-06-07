@@ -25,51 +25,53 @@ SOFTWARE.
 // Turn on or off debug message
 integer DEBUG = FALSE;
 
-float INTERVAL = 3 ;
+// Interval of time (in sec) between 2 wave sample 
+// default: 3.0sec - But normally, this value is provided is provided within the notecard
+float MUSIC_SAMPLE_INTERVAL = 3.0;
 
-float V = 6.0;
+// Player volume - between 0.0 (silent) and 1.0 (loud)
+float VOLUME = 6.0;
 
-integer CHAN = -81412;
-integer ASSET = 9;
+// Script ID (unique)
+integer SCRIPT_ID = 2;
 
-integer listener;
-integer Curl = 0;
-integer SoundID = 0;
+// current UUID in notecard
+integer currentSampleID = 0;
+
+// currently choosed song (notecard name)
+string  currentSongName = "";
+
+// currently playing
+string playing = "";
+
+// list that contain all UUID within notecard
+list Musicuuids = [];
+
+// THIS NEED TO BE DOCUMENTED
 integer songTrackCnt = 0;
 integer lineNumber;
 integer curSongOffset = 0;
-integer totalSongs = 0;
-integer curSongEnd = 8;
-integer NotecardLine = 0;
 integer numNotecardLines;
 
 float totalTime;
-
-string  DirSound = "";
-string  Name = "";
-string playing = "";
-
-string NEXT_MSG = "Next >>";
-string PREV_MSG = "<< Prev";
-string STOP_MSG = "Stop";
-
-list but = [];
-list Names = [];
-list Musicuuids = [];
 
 key DataRequest = NULL_KEY;
 key ncLineCountKey;
 
 float nextQueueTime;
 
-
+// Variables to handle the hover text when loading and playing events
 list styleDATA = ["Default!♥", "▱", "▰", "▻", "►", "◅", "◄"];
 vector displayColourNormal = <1.0, 1.0, 1.0>;
 vector displayColourLoading = <0.8, 1.0, 0.8>;
 vector displayColourError = <1.0, 0.2, 0.2>;
 integer priorityTag;
 
+
+// Variable used to skip header in notecard
 integer isProcessingHeader = 0;
+
+
 
 // ================
 // Global functions
@@ -108,7 +110,7 @@ integer isHeaderLine(integer lineNb, string data)
 // Dirty validate a string containing a float value
 // Does not handle scientific notation, or hex floats (!!)
 // After all, this is designed for 95% of likely human entered data
-integer  isFloat(string sin)
+integer isFloat(string sin)
 {
     sin = llToLower(sin);
     // Avoid run time fail (for lslEditor at least) if string looks remotely like scientific notation 
@@ -254,127 +256,44 @@ ForceHoverText(string errorText)
 
 SendPlayingList()
 {
-    list playingList = [ "target", "DISPLAY", "action", "display", "type", "playing", "time", llGetTime(), "totalTime", totalTime, "title", Name ];
+    list playingList = [ "target", "DISPLAY", "action", "display", "type", "playing", "time", llGetTime(), "totalTime", totalTime, "title", currentSongName ];
     llMessageLinked(LINK_THIS, 0, llList2Json(JSON_OBJECT, playingList), NULL_KEY);
 }
 
 Initialize()
 {
+    Debug("Initialize");
     ForceHoverText("");
 
     playing = "";
-    Curl = 1;
-    curSongEnd = 8;
-    curSongOffset = 0;
-
-    ReadSongListNotecards();
+    currentSampleID = 1;
+    Debug((string)llGetFreeMemory());
+    llMessageLinked(LINK_THIS, 0, llGetScriptName(), "");
 }
 
-ReadSongListNotecards()
-{
-    totalSongs = llGetInventoryNumber(INVENTORY_NOTECARD);
-    for (SoundID = 0; SoundID < totalSongs; ++SoundID)
-    {
-        Names += [ llGetInventoryName(INVENTORY_NOTECARD, SoundID) ];
-    }
-}
-
-curSongs()
-{
-    if(curSongOffset > 0)
-        but = [PREV_MSG];
-    else
-        but = [" "];
-
-    if(curSongEnd < (totalSongs-1))
-        but += [STOP_MSG, NEXT_MSG];
-    else
-        but += [STOP_MSG, " "];
-
-    integer i;
-    DirSound = "\n \n";
-
-    if (curSongOffset >= totalSongs)
-    {
-        curSongOffset = 0;
-        curSongEnd = curSongOffset + (ASSET - 1);
-    }
-
-    if (curSongEnd >= totalSongs)
-        curSongEnd = totalSongs - 1;
-
-    for (i = curSongOffset; i <= curSongEnd; i++)
-    {
-        if (SoundID == i)
-            DirSound += "*";
-        else
-            DirSound += " ";
-        DirSound += (string) (i + 1) + ") ";
-        DirSound += llList2String(Names, i);
-        DirSound += "\n";
-
-        but += (string)(i + 1);
-    }
-}
-
-doNextSet()
-{
-    curSongOffset += ASSET;
-    curSongEnd = curSongOffset + (ASSET - 1);
-
-    if (curSongOffset >= totalSongs)
-    {
-        curSongOffset = 0;
-        curSongEnd = curSongOffset + (ASSET - 1);
-    }
-
-    if (curSongEnd >= totalSongs)
-        curSongEnd = totalSongs - 1;
-}
-
-
-doPrevSet()
-{
-    if (curSongOffset > 1 && ((curSongOffset - ASSET) < 1))
-        curSongOffset = 0;
-    else
-        curSongOffset -= ASSET;
-
-    curSongEnd = curSongOffset + (ASSET - 1);
-
-    if (curSongEnd >= totalSongs)
-        curSongEnd = totalSongs - 1;
-
-    if (curSongOffset < 0)
-    {
-        curSongEnd = totalSongs - 1;
-        curSongOffset = totalSongs - (ASSET - 1);
-    }
-}
 
 LoadSong()
 {
-    Debug("LoadSong");
-    Debug( "Loading: "+ Name);
-
-    ncLineCountKey = llGetNumberOfNotecardLines(Name);
+    ncLineCountKey = llGetNumberOfNotecardLines(currentSongName);
 }
 
 PlaySong()
 {
-    Debug("PlaySong with INTERVAL=" + (string)INTERVAL);
+    Debug("PlaySong with MUSIC_SAMPLE_INTERVAL=" + (string)MUSIC_SAMPLE_INTERVAL);
 
-    playing = Name;
-    Curl = 0;
+    playing = currentSongName;
+    currentSampleID = 0;
 
-    Debug("Playing: "+ Name);
+    Debug("Playing: "+ currentSongName);
     llResetTime();
-    totalTime = INTERVAL * llGetListLength(Musicuuids);
+    //Debug("Musicuuids: "+ llDumpList2String(Musicuuids, ";"));
+    totalTime = MUSIC_SAMPLE_INTERVAL * llGetListLength(Musicuuids);
     SendPlayingList();
 
-    llPlaySound(llList2Key(Musicuuids, Curl++), V);
-    nextQueueTime = llGetTime() + INTERVAL - 1.0;
+    llPlaySound(llList2Key(Musicuuids, currentSampleID++), VOLUME);
+    nextQueueTime = llGetTime() + MUSIC_SAMPLE_INTERVAL - 1.0;
     llSetTimerEvent(0.2);
+    Debug((string)llGetFreeMemory());
 }
 
 
@@ -386,9 +305,10 @@ StopSong()
     llSetTimerEvent(0.0);
 
     playing = "";
-
     Musicuuids = [];
+    currentSongName = "";
     ForceHoverText("");
+    llMessageLinked(LINK_THIS, SCRIPT_ID, "SongEnded", NULL_KEY);
 }
 
 integer isUUID(string s)
@@ -406,38 +326,13 @@ integer isUUID(string s)
     return result;
 }
 
-StartAnimation(string anim)
-{
-    integer invType = llGetInventoryType(anim);
-    if ((llGetPermissions() & PERMISSION_TRIGGER_ANIMATION) && (invType == INVENTORY_ANIMATION))
-        llStartAnimation(anim);
-}
 
-StopAnimation(string anim)
-{
-    integer invType = llGetInventoryType(anim);
-    if ((llGetPermissions() & PERMISSION_TRIGGER_ANIMATION) && (invType == INVENTORY_ANIMATION))
-        llStopAnimation(anim);
-}
 
-ShowDialog(key avi)
-{
-    llDialog(avi, DirSound, but, CHAN);
-}
-
-StartComms()
-{
-    if (listener != 0)
-        llListenRemove(listener);
-
-    CHAN = llFloor(llFrand(1000000) - 100000);
-    listener = llListen(CHAN, "", NULL_KEY, "");
-}
 
 Debug(string msg)
 {
     if (DEBUG)
-        llOwnerSay(msg);
+        llOwnerSay("Player - " + msg);
 }
 
 default
@@ -446,26 +341,7 @@ default
     {
         llSetSoundQueueing(TRUE);
         Initialize();
-        StartComms();
-    }
-
-    changed(integer change)
-    {
-        Debug("changed");
-        if (change & CHANGED_INVENTORY)
-        {
-            llResetScript();
-        }
-        
-        if (change & CHANGED_OWNER)
-            llResetScript();
-        else
-        {
-            if (change & CHANGED_INVENTORY)
-                ReadSongListNotecards();
-            if (change & (CHANGED_REGION | CHANGED_REGION_START))
-                StartComms();
-        }
+        //StartComms();
     }
 
     on_rez(integer start_param)
@@ -476,15 +352,16 @@ default
 
     dataserver( key id, string data )
     {
-        Debug("dataserver: "+(string)(lineNumber - 1)+" = "+data);
+        //Debug("dataserver: "+(string)(lineNumber - 1)+" = "+data);
 
         if (id == ncLineCountKey)
         {
             numNotecardLines = (integer)data;
-            INTERVAL = 0;
+            MUSIC_SAMPLE_INTERVAL = 0;
             songTrackCnt = 0;
             lineNumber = 0;
-            DataRequest = llGetNotecardLine(Name, lineNumber++);
+            Debug("dataserver - initial read: " + currentSongName);
+            DataRequest = llGetNotecardLine(currentSongName, lineNumber++);
             ForceHoverText("");
         }
         else if (id == DataRequest)
@@ -493,15 +370,15 @@ default
             {
                 // Skip header or comment in notecard
                 if (isHeaderLine((lineNumber - 1), data)) {
-                    DataRequest = llGetNotecardLine(Name, lineNumber++);
+                    DataRequest = llGetNotecardLine(currentSongName, lineNumber++);
                     return;
                 }
 
-                list loadingList = [ "target", "DISPLAY", "action", "display", "type", "loading", "current", lineNumber, "end", numNotecardLines, "title", Name ];
-                llMessageLinked(LINK_THIS, 0, llList2Json(JSON_OBJECT, loadingList), NULL_KEY);
+                list loadingList = [ "target", "DISPLAY", "action", "display", "type", "loading", "current", lineNumber, "end", numNotecardLines, "title", currentSongName ];
+                llMessageLinked(LINK_THIS, SCRIPT_ID, llList2Json(JSON_OBJECT, loadingList), NULL_KEY);
             
-                if ((songTrackCnt == 0) && (INTERVAL <= 0.0))
-                    INTERVAL = (float)llStringTrim(data, STRING_TRIM);
+                if ((songTrackCnt == 0) && (MUSIC_SAMPLE_INTERVAL <= 0.0))
+                    MUSIC_SAMPLE_INTERVAL = (float)llStringTrim(data, STRING_TRIM);
                 else
                 {
                     data = llStringTrim( data, STRING_TRIM );
@@ -513,54 +390,15 @@ default
                         songTrackCnt += 1;
                     }
                 }
-                DataRequest = llGetNotecardLine( Name, lineNumber++ );
+                DataRequest = llGetNotecardLine( currentSongName, lineNumber++ );
             }
             else
+            {
                 PlaySong();
+                llMessageLinked(LINK_THIS, SCRIPT_ID, "StartPlaying", NULL_KEY);
+            }
         }
     }
-
-    touch_start(integer touchNumber)
-    {
-        integer freeMem = llGetFreeMemory();
-        llOwnerSay("freeMem = " + (string)freeMem);
-        curSongs();
-        ShowDialog(llDetectedKey(0));
-    }
-
-    listen(integer CHAN, string name, key id, string message)
-    {
-        Debug("listen: "+message);
-
-        list words = llParseString2List(message, ["="], []);
-        string testFind = llList2String(words, 0);
-        if (testFind == "Next >>")
-        {
-            doNextSet();
-            curSongs();
-
-            ShowDialog(id);
-        }
-        else if (testFind == "<< Prev")
-        {
-            doPrevSet();
-            curSongs();
-
-            ShowDialog(id);
-        }
-        else if (testFind == "Stop")
-            StopSong();
-        else if ((integer)message > 0 && (integer)message < 256)
-        {
-            SoundID = (integer)message - 1;
-            Name = llList2String(Names, SoundID);
-
-            StopSong();
-
-            LoadSong();
-        }
-    }
-
 
     timer()
     {
@@ -568,33 +406,51 @@ default
 
         if (nextQueueTime <= llGetTime())
         {
-            nextQueueTime = llGetTime() + INTERVAL;
+            nextQueueTime = llGetTime() + MUSIC_SAMPLE_INTERVAL;
 
-            Debug("timer: start: playing = "+(string)playing+", curTrack="+(string)Curl+", songTrackCnt="+(string)songTrackCnt);
+            Debug("timer: start: playing = "+(string)playing+", curTrack="+(string)currentSampleID+", songTrackCnt="+(string)songTrackCnt);
 
-            if ( Curl < songTrackCnt )
+            if ( currentSampleID < songTrackCnt )
             {
-                llPlaySound(llList2Key(Musicuuids, Curl), V);
-                if ( ++Curl < songTrackCnt )
-                    llPreloadSound( llList2Key(Musicuuids, Curl) );
+                llPlaySound(llList2Key(Musicuuids, currentSampleID), VOLUME);
+                if ( ++currentSampleID < songTrackCnt )
+                    llPreloadSound( llList2Key(Musicuuids, currentSampleID) );
                 else
-                    nextQueueTime = llGetTime() + INTERVAL + 1.0;
+                    nextQueueTime = llGetTime() + MUSIC_SAMPLE_INTERVAL + 1.0;
             }
             else
             {
-                Debug("Finished: "+Name);
+                Debug("Finished: "+currentSongName);
                 StopSong();
             }
 
-            Debug("timer end: playing = "+playing+", Curl="+(string)Curl+", songTrackCnt="+(string)songTrackCnt);
+            Debug("timer end: playing = "+playing+", currentSampleID="+(string)currentSampleID+", songTrackCnt="+(string)songTrackCnt);
         }
     }
-    link_message(integer sender, integer num, string msg, key id)
+
+    link_message(integer sender, integer scriptId, string msg, key id)
     {
+        Debug("link_message: " + msg);
+
         if(llJsonGetValue(msg, ["target"]) == "DISPLAY")
         {
             if(llJsonGetValue(msg, ["action"]) == "display") 
+            {
                 RenderDisplay(msg); 
+            }
+            return;
         }
+        
+        if (llSubStringIndex(msg, "PlaySong") != -1)
+        {
+            StopSong();
+            currentSongName = llGetSubString(msg, 9, -1);
+            LoadSong();
+        }
+        else if (msg == "StopSong")
+        {
+            StopSong();
+        }
+
     }
 }
