@@ -23,7 +23,7 @@ SOFTWARE.
 */
 
 // Turn on or off debug message
-integer DEBUG = FALSE;
+integer DEBUG = TRUE;
 
 // Interval of time (in sec) between 2 wave sample 
 // default: 3.0sec - But normally, this value is provided is provided within the notecard
