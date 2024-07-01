@@ -295,7 +295,7 @@ list generateSongMenuButtons()
 
 
 
-StopSong()
+StopAllSong()
 {
     // reset the basic variable
     isPlaying = FALSE;
@@ -303,7 +303,7 @@ StopSong()
     currentSongId = 0;
 
     // Send the stop command to the player
-    llMessageLinked(LINK_THIS, SCRIPT_ID, "StopSong", ToucherID);
+    llMessageLinked(LINK_THIS, SCRIPT_ID, "StopAllSong", ToucherID);
 
     // i must slow down the script because SL is slow when you call 2 functions...
     llSleep(0.2);
@@ -522,7 +522,7 @@ default
         }
         else if (message == "Stop Song")
         {
-            StopSong();
+            StopAllSong();
         }
         else if (message == "Access")
         {
@@ -585,7 +585,7 @@ default
         }
         else if (message == "Stop")
         {
-            StopSong();
+            StopAllSong();
         }
         else if ((integer)message > 0 && (integer)message < 256)
         {
