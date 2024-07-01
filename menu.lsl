@@ -23,7 +23,7 @@ SOFTWARE.
 */
 
 // Turn on or off debug message
-integer DEBUG = TRUE;
+integer DEBUG = FALSE;
 
 // Script ID (unique)
 integer SCRIPT_ID = 1;
@@ -239,9 +239,12 @@ string generateSongMenuDisplay()
     integer i;
     chooseSongMenuDisplay = "\n \n";
 
+    DebugMsg("generateSongMenuDisplay");
+
     // Generate song list to be displayed
     for (i = curSongOffset; i <= curSongEnd; i++)
     {
+        DebugMsg("notecard: " + llList2String(listNotecards, i));
         // add an asterix to the currently playing song
         if (currentSongId == i)
             chooseSongMenuDisplay += "*";
