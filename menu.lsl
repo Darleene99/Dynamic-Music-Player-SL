@@ -23,7 +23,7 @@ SOFTWARE.
 */
 
 // Turn on or off debug message
-integer DEBUG = FALSE;
+integer DEBUG = TRUE;
 
 // Script ID (unique)
 integer SCRIPT_ID = 1;
@@ -620,7 +620,7 @@ default
     link_message(integer sender, integer scriptId, string msg, key id)
     {
         // player sent message to inform the song was loaded and has started to play
-        if (msg == "StartPlaying")
+        if (msg == "StartPlaying" || msg == "StopAllSong")
         {
             isLoading = FALSE;
             return;
