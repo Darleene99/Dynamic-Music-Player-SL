@@ -23,7 +23,7 @@ SOFTWARE.
 */
 
 // Turn on or off debug message
-integer DEBUG = FALSE;
+integer DEBUG = TRUE;
 
 // Interval of time (in sec) between 2 wave sample 
 // default: 3.0sec - But normally, this value is provided is provided within the notecard
@@ -308,7 +308,6 @@ StopSong()
     Musicuuids = [];
     currentSongName = "";
     ForceHoverText("");
-    llMessageLinked(LINK_THIS, SCRIPT_ID, "SongEnded", NULL_KEY);
 }
 
 integer isUUID(string s)
@@ -422,6 +421,7 @@ default
             {
                 Debug("Finished: "+currentSongName);
                 StopSong();
+                llMessageLinked(LINK_THIS, SCRIPT_ID, "SongEnded", NULL_KEY);
             }
 
             Debug("timer end: playing = "+playing+", currentSampleID="+(string)currentSampleID+", songTrackCnt="+(string)songTrackCnt);
@@ -430,7 +430,7 @@ default
 
     link_message(integer sender, integer scriptId, string msg, key id)
     {
-        Debug("link_message: " + msg);
+        //Debug("link_message: " + msg);
 
         if(llJsonGetValue(msg, ["target"]) == "DISPLAY")
         {
@@ -447,9 +447,14 @@ default
             currentSongName = llGetSubString(msg, 9, -1);
             LoadSong();
         }
-        else if (msg == "StopSong")
+        else if (msg == "SongEnded")
         {
             StopSong();
+        }
+        else if (msg == "StopAllSong")
+        {
+            StopSong();
+            llMessageLinked(LINK_THIS, SCRIPT_ID, "StopAllSong", NULL_KEY);
         }
 
     }
