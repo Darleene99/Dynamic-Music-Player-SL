@@ -620,7 +620,7 @@ default
     link_message(integer sender, integer scriptId, string msg, key id)
     {
         // player sent message to inform the song was loaded and has started to play
-        if (msg == "StartPlaying" || msg == "SongEnded")
+        if (msg == "StartPlaying")
         {
             isLoading = FALSE;
             return;
