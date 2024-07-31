@@ -337,6 +337,7 @@ default
     state_entry()
     {
         llSetSoundQueueing(TRUE);
+        llSetSoundRadius(10); //Enable sound cutoff at 10 meters.
         Initialize();
         //StartComms();
     }
